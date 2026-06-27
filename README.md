@@ -26,7 +26,7 @@
 
 <br/>
 
-> **Stochastix** streams live crypto ticks from Binance, runs a statistical + ML anomaly detection ensemble on every event, persists everything to a time-series database, and surfaces it all on a multi-page Streamlit dashboard — structured the way a real production data pipeline would be.
+> **Stochastix** streams live crypto ticks from Binance, runs a statistical + ML anomaly detection ensemble on every event, persists everything to a time-series database, and surfaces it all across **11 Streamlit dashboard pages** — structured the way a real production data pipeline would be.
 
 <br/>
 
@@ -47,7 +47,7 @@ streamlit run app.py
 # → http://localhost:8501   |   No .env needed   |   Runs on DuckDB out of the box
 ```
 
-For the full ML stack (Prophet + LSTM Autoencoder):
+Full ML stack (Prophet + LSTM Autoencoder):
 ```bash
 pip install -r requirements.txt
 ```
@@ -80,42 +80,75 @@ Binance WebSocket  ──►  services/stream.py            ← live tick ingest
 | 📡 **Live Ingestion** | Binance `@trade` WebSocket with REST fallback and auto-reconnect |
 | 📊 **Statistics** | Rolling SMA, EMA, Bollinger Bands, Z-score, Rate-of-Change |
 | 🤖 **ML Ensemble** | Isolation Forest + Prophet forecast bands + LSTM Autoencoder — majority-vote verdict |
-| 🗄️ **Dual Database** | DuckDB for zero-config local dev; PostgreSQL + TimescaleDB for production (single env var to switch) |
-| 🔀 **Message Streaming** | Apache Kafka or Redis Streams backbone; ticks, metrics and anomaly events each get their own topic |
-| 🔐 **Auth** | JWT access tokens, bcrypt password hashing, `admin / analyst / viewer` role gates on every page |
-| 📈 **Dashboard** | OHLC candlestick candles, normalised multi-asset comparison, anomaly alert banner, CSV export |
+| 🗄️ **Dual Database** | DuckDB for zero-config local dev; PostgreSQL + TimescaleDB for production (one env var to switch) |
+| 🔀 **Message Streaming** | Apache Kafka or Redis Streams backbone; ticks, metrics, and anomaly events each get their own topic |
+| 🔐 **Auth & RBAC** | JWT access tokens, bcrypt password hashing, `admin / analyst / viewer` role gates on every page |
+| 📈 **12 Dashboard Pages** | OHLC candles, KPI cards, SQL analytics, forecasting, Power BI export, and more |
+| 📤 **Reporting** | CSV and Excel export; Power BI-ready data pack with three relational sheets |
 | 🐳 **Docker** | Multi-stage build; Compose profiles for Postgres, Redis, and Kafka |
 | ☁️ **Cloud** | AWS ECS Fargate (+ Terraform), GCP Cloud Run, Azure Container Apps — same image, same env vars |
 | 🧪 **Tests** | 56 pytest tests across analytics, ML, streaming, and auth |
 
 ---
 
+## 📊 Dashboard Pages
+
+| # | Page | Role | Description |
+|---|---|---|---|
+| 🏠 | **Home** | viewer | Live ticker tape, SMA/EMA price overlay, anomaly alert banner |
+| 1 | **Volatility** | viewer | Bollinger Bands, rolling volatility, market-regime classifier |
+| 2 | **Anomaly** | viewer | Z-score series, threshold bands, anomaly event log |
+| 3 | **Comparison** | viewer | Normalised % performance across BTC/ETH/SOL, OHLC candlesticks, metrics table |
+| 4 | **Data Explorer** | viewer | Browse and export raw ticks, computed metrics, and candles |
+| 5 | **Login** | public | Sign in, register, JWT token viewer, RBAC capability matrix |
+| 6 | **ML Anomaly** | analyst+ | Isolation Forest, Prophet, and LSTM scores with majority-vote ensemble |
+| 7 | **KPI Dashboard** | viewer | Executive KPI cards, anomaly-rate gauge, price distribution chart |
+| 8 | **SQL Analytics** | viewer | 6 advanced queries — window functions, CTEs, rankings, moving averages |
+| 9 | **Export Reports** | viewer | Download market data and analytics as CSV or Excel |
+| 10 | **Forecasting** | viewer | Linear regression + EMA forecast with confidence bands |
+| 11 | **Power BI Connector** | viewer | Dashboard previews and Power BI-ready data export pack |
+
+---
+
 ## ⚙️ Configuration
 
-Copy `.env.example` → `.env`. Everything is optional — unset values fall back to sensible defaults.
+All enterprise features are opt-in via `.env`. The app runs without any of these set.
 
-**Switch to PostgreSQL / TimescaleDB**
+**PostgreSQL + TimescaleDB**
 ```bash
 DB_BACKEND=postgres
 POSTGRES_HOST=localhost
 POSTGRES_DB=stochastix
 POSTGRES_USER=stochastix
 POSTGRES_PASSWORD=change-me
+POSTGRES_RETENTION_DAYS=30
 ```
 
-**Enable Kafka or Redis Streams**
+**Kafka or Redis Streams**
 ```bash
-STREAM_BACKEND=kafka          # or redis
+# Kafka
+STREAM_BACKEND=kafka
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# Redis
+STREAM_BACKEND=redis
 REDIS_URL=redis://localhost:6379/0
 ```
 
-**Enable authentication**
+**Authentication**
 ```bash
-JWT_SECRET_KEY=your-random-secret-here
+JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 DEFAULT_ADMIN_USER=admin
 DEFAULT_ADMIN_PASSWORD=change-me
 ```
+
+**RBAC Roles**
+
+| Role | Access |
+|---|---|
+| `viewer` | All read-only dashboards |
+| `analyst` | + ML Anomaly page, full data export |
+| `admin` | + user management, full configuration |
 
 ---
 
@@ -136,27 +169,21 @@ docker compose --profile postgres --profile kafka up --build
 
 ## ☁️ Cloud Deployment
 
+Same Docker image and env vars across all three providers.
+
 | Cloud | Service | IaC |
 |---|---|---|
 | **AWS** | ECS Fargate + ALB + RDS + ElastiCache | Terraform included — [`deploy/aws`](deploy/aws/README.md) |
-| **GCP** | Cloud Run + Cloud SQL + Memorystore | Step-by-step guide — [`deploy/gcp`](deploy/gcp/README.md) |
-| **Azure** | Container Apps + Azure DB for PostgreSQL + Azure Cache | Step-by-step guide — [`deploy/azure`](deploy/azure/README.md) |
+| **GCP** | Cloud Run + Cloud SQL + Memorystore | CLI guide — [`deploy/gcp`](deploy/gcp/README.md) |
+| **Azure** | Container Apps + Azure DB for PostgreSQL + Azure Cache | CLI guide — [`deploy/azure`](deploy/azure/README.md) |
 
-The same Docker image and the same environment variables work across all three providers.
-
----
-
-## 📊 Dashboard Pages
-
-| Page | Role | What You See |
-|---|---|---|
-| 🏠 **Home** | everyone | Live ticker tape, SMA/EMA price overlay, anomaly alert banner |
-| 📉 **Volatility** | everyone | Bollinger Bands, rolling volatility, market-regime label |
-| 🚨 **Anomaly** | everyone | Z-score chart, threshold bands, event log |
-| 📊 **Comparison** | everyone | Normalised % performance across BTC/ETH/SOL, OHLC candlesticks |
-| 🗄️ **Data Explorer** | everyone | Browse and export ticks, metrics, and candles as CSV |
-| 🤖 **ML Anomaly** | analyst + admin | Isolation Forest, Prophet, and LSTM scores with ensemble vote |
-| 🔐 **Login** | public | Sign in, register, view JWT token, inspect role matrix |
+```bash
+# AWS one-liner
+cd deploy/aws/terraform
+terraform init && terraform apply \
+  -var="image_url=<ecr-uri>" \
+  -var="jwt_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')"
+```
 
 ---
 
@@ -166,7 +193,7 @@ The same Docker image and the same environment variables work across all three p
 |---|---|
 | **SMA / EMA** | Simple and exponential moving averages over configurable windows |
 | **Bollinger Bands** | SMA ± 2 standard deviations — squeeze/expansion regime detection |
-| **Rolling Z-score** | Statistical distance from the rolling mean — configurable threshold |
+| **Rolling Z-score** | Statistical distance from the rolling mean, configurable threshold |
 | **Isolation Forest** | Unsupervised outlier detection on price, return, and volatility features |
 | **Prophet** | Forecast-band anomaly — flags prices outside the expected trend range |
 | **LSTM Autoencoder** | Reconstruction error on 20-tick sliding windows — high error signals anomaly |
@@ -185,7 +212,24 @@ Four tables — schema is identical across DuckDB and TimescaleDB:
 | `ohlc_candles` | 1-minute aggregated OHLC + volume |
 | `users` | Username, bcrypt hash, role, active flag |
 
-On TimescaleDB, `market_data`, `analytics_metrics`, and `ohlc_candles` are promoted to hypertables with automatic compression after one day and a configurable data-retention policy.
+On TimescaleDB all three time-series tables are promoted to hypertables with automatic compression after one day and a configurable data-retention policy.
+
+---
+
+## 📤 Power BI Setup
+
+1. Open the app → **Power BI Connector** page → download the **Full Power BI Pack (.xlsx)**
+2. Three sheets inside: `Fact_Prices`, `Dim_Analytics`, `Summary_KPI`
+3. In Power BI Desktop: **Get Data → Excel Workbook** → select all three sheets → Load
+4. Relate tables on `symbol` and `ts` in Model view
+
+Key DAX measures:
+```
+Avg Price     = AVERAGE(Fact_Prices[price])
+Anomaly Rate  = DIVIDE(COUNTROWS(FILTER(Dim_Analytics, Dim_Analytics[anomaly] = TRUE())), COUNTROWS(Dim_Analytics))
+Price Range   = MAX(Fact_Prices[price]) - MIN(Fact_Prices[price])
+Current Price = LASTNONBLANK(Fact_Prices[price], 1)
+```
 
 ---
 
@@ -196,10 +240,10 @@ pytest tests/ -v
 ```
 
 ```
-tests/test_analytics.py             30 passed
-tests/test_auth.py                   9 passed
-tests/test_ml_anomaly.py            12 passed
-tests/test_streaming_backbone.py     5 passed
+tests/test_analytics.py              30 passed
+tests/test_auth.py                    9 passed
+tests/test_ml_anomaly.py             12 passed
+tests/test_streaming_backbone.py      5 passed
 ──────────────────────────────────────────────
 56 passed in total
 ```
@@ -210,35 +254,40 @@ tests/test_streaming_backbone.py     5 passed
 
 ```
 Stochastix/
-├── app.py                          ← main dashboard page (Home)
+├── app.py                          ← Home dashboard (entry point)
 ├── pages/
-│   ├── 1_Volatility.py
-│   ├── 2_Anomaly.py
-│   ├── 3_Comparison.py
-│   ├── 4_Data_Explorer.py
-│   ├── 5_Login.py
-│   └── 6_ML_Anomaly.py
+│   ├── 1_Volatility.py             ← Bollinger Bands, volatility regimes
+│   ├── 2_Anomaly.py                ← Z-score anomaly detection
+│   ├── 3_Comparison.py             ← Multi-asset OHLC comparison
+│   ├── 4_Data_Explorer.py          ← Browse and export raw data
+│   ├── 5_Login.py                  ← Auth, register, RBAC matrix
+│   ├── 6_ML_Anomaly.py             ← Isolation Forest, Prophet, LSTM  [analyst+]
+│   ├── 7_KPI_Dashboard.py          ← Business KPI metrics, anomaly gauge
+│   ├── 8_SQL_Analytics.py          ← Window functions, CTEs, rankings
+│   ├── 9_Export_Reports.py         ← CSV and Excel export
+│   ├── 10_Forecasting.py           ← Linear regression + EMA forecasts
+│   └── 11_PowerBI_Connector.py     ← Power BI dashboards and data export
 ├── services/
-│   ├── analytics.py                ← SMA, EMA, Z-score, Bollinger, ROC
-│   ├── stream.py                   ← Binance WebSocket + ring buffer
+│   ├── analytics.py                ← SMA, EMA, volatility, Z-score, ROC
+│   ├── stream.py                   ← Binance WebSocket ingestion + buffer
 │   ├── streaming_backbone.py       ← Kafka / Redis Streams publisher
-│   └── ml_anomaly.py              ← Isolation Forest, Prophet, LSTM
+│   └── ml_anomaly.py               ← ML ensemble (IF, Prophet, LSTM)
 ├── pipeline/
-│   ├── __init__.py                 ← selects DuckDB or Postgres at startup
+│   ├── __init__.py                 ← DB_BACKEND switcher
 │   ├── database.py                 ← DuckDB backend
-│   └── postgres_db.py             ← PostgreSQL + TimescaleDB backend
+│   └── postgres_db.py              ← PostgreSQL + TimescaleDB backend
 ├── auth/
-│   └── security.py                ← JWT, bcrypt, role decorator
+│   └── security.py                 ← JWT, bcrypt, RBAC, role guard
 ├── deploy/
 │   ├── aws/                        ← ECS Fargate + Terraform
-│   ├── gcp/                        ← Cloud Run guide
-│   └── azure/                      ← Container Apps guide
+│   ├── gcp/                        ← Cloud Run
+│   └── azure/                      ← Container Apps
 ├── tests/                          ← 56 pytest tests
-├── .github/workflows/ci-cd.yml    ← lint → test → build → publish → deploy
-├── docker-compose.yml             ← profiles: postgres · redis · kafka
+├── .github/workflows/ci-cd.yml     ← lint → test → build → publish → deploy
 ├── Dockerfile
-├── requirements.txt               ← full (includes Prophet + torch)
-├── requirements-core.txt          ← lean (sklearn only)
+├── docker-compose.yml
+├── requirements.txt                ← Full (all ML deps)
+├── requirements-core.txt           ← Lean (sklearn only)
 └── .env.example
 ```
 
@@ -252,23 +301,50 @@ Stochastix/
 | Dashboard | Streamlit + Plotly |
 | Data Ingest | Binance WebSocket (`websocket-client`) + REST fallback |
 | Message Streaming | Apache Kafka · Redis Streams |
-| Database | DuckDB · PostgreSQL + TimescaleDB |
+| Database | DuckDB (dev) · PostgreSQL + TimescaleDB (prod) |
 | Analytics | NumPy · Pandas |
-| ML | scikit-learn · Prophet · PyTorch |
+| ML | scikit-learn · Prophet · PyTorch (LSTM) |
 | Auth | PyJWT · bcrypt |
-| Tests | pytest |
-| Containers | Docker + Docker Compose |
-| Cloud | AWS · GCP · Azure |
+| Reporting | openpyxl · Power BI (CSV/Excel) |
+| Tests | pytest — 56 tests |
+| Containers | Docker multi-stage + Docker Compose |
+| Cloud | AWS ECS Fargate · GCP Cloud Run · Azure Container Apps |
+| IaC | Terraform (AWS) |
 | CI/CD | GitHub Actions → GHCR |
 
 ---
 
 ## 🔮 Roadmap
 
-- [ ] Slack / email alert webhooks on anomaly events
+- [x] Business KPI Dashboard
+- [x] Advanced SQL Analytics with window functions
+- [x] CSV and Excel export
+- [x] Price forecasting with confidence bands
+- [x] Power BI connector and dashboard previews
+- [ ] Email / Slack alerts on anomaly events
 - [ ] Backtesting mode — replay historical ticks through the full pipeline
-- [ ] Grafana dashboard wired directly to TimescaleDB
+- [ ] Strategy simulation — moving-average crossover signals
+- [ ] Grafana dashboard on TimescaleDB continuous aggregates
 - [ ] Kubernetes Helm chart
+
+---
+
+## 📄 Resume Bullet
+
+```
+Built Stochastix, a real-time financial analytics platform in Python: ingests live
+BTC/ETH/SOL ticks via Binance WebSocket, streams events through Apache Kafka /
+Redis Streams, and persists to PostgreSQL + TimescaleDB (hypertables, compression,
+retention) with DuckDB fallback. Detects anomalies using Isolation Forest, Prophet,
+and LSTM Autoencoder (majority-vote ensemble) alongside Z-score baselines. Advanced
+SQL analytics with window functions (RANK, LAG, LEAD, NTILE, PERCENT_RANK). Business
+KPI dashboards, price forecasting with confidence bands, CSV/Excel reporting, and a
+Power BI connector. JWT + bcrypt RBAC (admin/analyst/viewer). 11-page Streamlit
+dashboard, multi-stage Docker image, Terraform deploy to AWS ECS Fargate / GCP Cloud
+Run / Azure Container Apps. GitHub Actions CI/CD, 56-test pytest suite.
+
+Skills: Python · SQL · Power BI · Streamlit · PostgreSQL · Docker · ML · Analytics
+```
 
 ---
 
@@ -281,4 +357,3 @@ Stochastix/
 <img src="https://capsule-render.vercel.app/api?type=venom&color=0:7c3aed,30:4c1d95,60:2d1b69,85:1a0533,100:0d0221&height=160&section=footer&animation=twinkling" width="100%"/>
 
 </div>
-
