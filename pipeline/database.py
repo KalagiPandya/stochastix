@@ -126,31 +126,52 @@ def init_db() -> None:
 
 def insert_tick(symbol: str, price: float, volume: float = 0.0) -> None:
     try:
-        _exec("""
+        _exec(
+            """
             INSERT INTO market_data (id, symbol, price, volume, ts)
             VALUES (nextval('market_data_id_seq'), ?, ?, ?, current_timestamp)
-        """, [symbol, price, volume])
+        """,
+            [symbol, price, volume],
+        )
     except Exception as e:
         logger.error("insert_tick error: %s", e)
 
 
-def insert_metrics(symbol: str, sma: float, ema: float,
-                   volatility: float, z_score: float, anomaly: bool,
-                   ml_score: float = None, ml_method: str = None) -> None:
+def insert_metrics(
+    symbol: str,
+    sma: float,
+    ema: float,
+    volatility: float,
+    z_score: float,
+    anomaly: bool,
+    ml_score: float = None,
+    ml_method: str = None,
+) -> None:
     try:
-        _exec("""
+        _exec(
+            """
             INSERT INTO analytics_metrics
                 (id, symbol, sma, ema, volatility, z_score, anomaly_flag, ml_score, ml_method, ts)
             VALUES (nextval('analytics_metrics_id_seq'), ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)
-        """, [symbol, sma, ema, volatility, z_score, anomaly, ml_score, ml_method])
+        """,
+            [symbol, sma, ema, volatility, z_score, anomaly, ml_score, ml_method],
+        )
     except Exception as e:
         logger.error("insert_metrics error: %s", e)
 
 
-def upsert_candle(symbol: str, candle_ts, o: float, h: float,
-                  l: float, c: float, vol: float) -> None:
+def upsert_candle(
+    symbol: str,
+    candle_ts,
+    o: float,
+    h: float,
+    low: float,
+    c: float,
+    vol: float,
+) -> None:
     try:
-        _exec("""
+        _exec(
+            """
             INSERT INTO ohlc_candles (symbol, open, high, low, close, volume, candle_ts)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (symbol, candle_ts) DO UPDATE SET
@@ -158,55 +179,72 @@ def upsert_candle(symbol: str, candle_ts, o: float, h: float,
                 low    = LEAST(excluded.low,    ohlc_candles.low),
                 close  = excluded.close,
                 volume = ohlc_candles.volume + excluded.volume
-        """, [symbol, o, h, l, c, vol, candle_ts])
+        """,
+            [symbol, o, h, low, c, vol, candle_ts],
+        )
     except Exception as e:
         logger.error("upsert_candle error: %s", e)
 
 
 def fetch_recent_ticks(symbol: str, limit: int = 300):
-    return _query("""
+    return _query(
+        """
         SELECT price, ts FROM market_data
         WHERE symbol = ?
         ORDER BY ts DESC
         LIMIT ?
-    """, [symbol, limit])
+    """,
+        [symbol, limit],
+    )
 
 
 def fetch_analytics(symbol: str, limit: int = 300):
-    return _query("""
+    return _query(
+        """
         SELECT sma, ema, volatility, z_score, anomaly_flag, ml_score, ml_method, ts
         FROM analytics_metrics
         WHERE symbol = ?
         ORDER BY ts DESC
         LIMIT ?
-    """, [symbol, limit])
+    """,
+        [symbol, limit],
+    )
 
 
 def fetch_candles(symbol: str, limit: int = 100):
-    return _query("""
+    return _query(
+        """
         SELECT open, high, low, close, volume, candle_ts
         FROM ohlc_candles
         WHERE symbol = ?
         ORDER BY candle_ts DESC
         LIMIT ?
-    """, [symbol, limit])
+    """,
+        [symbol, limit],
+    )
 
 
 def fetch_latest_price(symbol: str) -> float | None:
-    row = _query_one("""
+    row = _query_one(
+        """
         SELECT price FROM market_data
         WHERE symbol = ?
         ORDER BY ts DESC
         LIMIT 1
-    """, [symbol])
+    """,
+        [symbol],
+    )
     return row[0] if row else None
 
 
 def count_anomalies(symbol: str, minutes: int = 60) -> int:
-    row = _query_one("""
+    row = _query_one(
+        """
         SELECT COUNT(*) FROM analytics_metrics
         WHERE symbol = ?
           AND anomaly_flag = TRUE
           AND ts >= current_timestamp - INTERVAL (? || ' minutes')
-    """, [symbol, str(minutes)])
+    """,
+        [symbol, str(minutes)],
+    )
     return row[0] if row else 0

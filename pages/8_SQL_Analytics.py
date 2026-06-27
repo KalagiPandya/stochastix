@@ -9,30 +9,43 @@ from pipeline import init_db, DB_BACKEND
 from pipeline.database import _query
 from services.stream import start_stream
 
-st.set_page_config(page_title="SQL Analytics — Stochastix", page_icon="🗄️", layout="wide")
+st.set_page_config(
+    page_title="SQL Analytics — Stochastix", page_icon="🗄️", layout="wide"
+)
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 [data-testid="metric-container"]{background:#161B22;border:1px solid #21262D;border-radius:10px;padding:16px 20px;}
 [data-testid="stSidebar"]{background:#0D1117;border-right:1px solid #21262D;}
 hr{border-color:#21262D;}
-</style>""", unsafe_allow_html=True)
+</style>""",
+    unsafe_allow_html=True,
+)
+
 
 @st.cache_resource
 def ensure():
-    init_db(); start_stream(); return True
+    init_db()
+    start_stream()
+    return True
+
+
 ensure()
 
 with st.sidebar:
     st.markdown("## 🗄️ SQL Analytics")
-    selected = st.radio("Query", [
-        "Top Volatile Coins",
-        "Hourly Average Prices",
-        "Moving Averages (Window)",
-        "Price Rankings",
-        "Window Functions: LAG / LEAD",
-        "Anomaly Summary",
-    ])
+    selected = st.radio(
+        "Query",
+        [
+            "Top Volatile Coins",
+            "Hourly Average Prices",
+            "Moving Averages (Window)",
+            "Price Rankings",
+            "Window Functions: LAG / LEAD",
+            "Anomaly Summary",
+        ],
+    )
     limit = st.slider("Row limit", 10, 100, 25)
     st.markdown("---")
     st.caption(f"Backend: **{DB_BACKEND.upper()}**")
@@ -41,6 +54,7 @@ with st.sidebar:
 st.title("🗄️ Advanced SQL Analytics")
 st.caption("Window functions · CTEs · Rankings · Aggregations")
 
+
 def run(sql, params=None):
     try:
         return _query(sql, params)
@@ -48,9 +62,11 @@ def run(sql, params=None):
         st.error(f"Query error: {e}")
         return pd.DataFrame()
 
+
 def show_sql(sql):
     with st.expander("View SQL", expanded=False):
         st.code(sql.strip(), language="sql")
+
 
 # ── Query routing ──────────────────────────────────────────────────────────
 if selected == "Top Volatile Coins":
@@ -80,14 +96,25 @@ FROM ranked ORDER BY vol_rank LIMIT ?"""
     show_sql(sql)
     df = run(sql, [limit])
     if not df.empty:
-        c1, c2 = st.columns([2,1])
-        with c1: st.dataframe(df, use_container_width=True, hide_index=True)
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            st.dataframe(df, use_container_width=True, hide_index=True)
         with c2:
-            fig = px.bar(df, x="Symbol", y="Std Dev σ",
-                         color="Std Dev σ", color_continuous_scale="Reds")
-            fig.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0),
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(color="#aaa"), showlegend=False)
+            fig = px.bar(
+                df,
+                x="Symbol",
+                y="Std Dev σ",
+                color="Std Dev σ",
+                color_continuous_scale="Reds",
+            )
+            fig.update_layout(
+                height=280,
+                margin=dict(l=0, r=0, t=10, b=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#aaa"),
+                showlegend=False,
+            )
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No data yet — stream populates shortly.")
@@ -114,12 +141,19 @@ ORDER BY "Hour" DESC LIMIT ?"""
         if "Symbol" in df.columns:
             fig = go.Figure()
             for sym in df["Symbol"].unique():
-                sdf = df[df["Symbol"]==sym].sort_values("Hour")
-                fig.add_trace(go.Scatter(x=sdf["Hour"], y=sdf["Avg ($)"],
-                                         mode="lines+markers", name=sym))
-            fig.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0),
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(color="#aaa"))
+                sdf = df[df["Symbol"] == sym].sort_values("Hour")
+                fig.add_trace(
+                    go.Scatter(
+                        x=sdf["Hour"], y=sdf["Avg ($)"], mode="lines+markers", name=sym
+                    )
+                )
+            fig.update_layout(
+                height=280,
+                margin=dict(l=0, r=0, t=10, b=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#aaa"),
+            )
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No data yet.")
@@ -156,17 +190,39 @@ FROM ma WHERE rn > 20 ORDER BY ts DESC LIMIT ?"""
         st.dataframe(df, use_container_width=True, hide_index=True)
         chart = df.sort_values("Timestamp")
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=chart["Timestamp"], y=chart["Price ($)"],
-                                 name="Price", line=dict(color="#4C9BE8", width=2)))
+        fig.add_trace(
+            go.Scatter(
+                x=chart["Timestamp"],
+                y=chart["Price ($)"],
+                name="Price",
+                line=dict(color="#4C9BE8", width=2),
+            )
+        )
         if "SMA-7" in chart.columns:
-            fig.add_trace(go.Scatter(x=chart["Timestamp"], y=chart["SMA-7"],
-                                     name="SMA-7", line=dict(color="#F5A623", dash="dot")))
+            fig.add_trace(
+                go.Scatter(
+                    x=chart["Timestamp"],
+                    y=chart["SMA-7"],
+                    name="SMA-7",
+                    line=dict(color="#F5A623", dash="dot"),
+                )
+            )
         if "SMA-20" in chart.columns:
-            fig.add_trace(go.Scatter(x=chart["Timestamp"], y=chart["SMA-20"],
-                                     name="SMA-20", line=dict(color="#7ED321", dash="dash")))
-        fig.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0),
-                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                          font=dict(color="#aaa"))
+            fig.add_trace(
+                go.Scatter(
+                    x=chart["Timestamp"],
+                    y=chart["SMA-20"],
+                    name="SMA-20",
+                    line=dict(color="#7ED321", dash="dash"),
+                )
+            )
+        fig.update_layout(
+            height=300,
+            margin=dict(l=0, r=0, t=10, b=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#aaa"),
+        )
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Need 20+ ticks per symbol.")
@@ -194,8 +250,10 @@ SELECT symbol AS "Symbol",
 FROM all_prices LIMIT ?"""
     show_sql(sql)
     df = run(sql, [limit])
-    if not df.empty: st.dataframe(df, use_container_width=True, hide_index=True)
-    else: st.info("No data yet.")
+    if not df.empty:
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No data yet.")
 
 elif selected == "Window Functions: LAG / LEAD":
     st.subheader("LAG · LEAD · Cumulative Window Functions")
@@ -222,12 +280,20 @@ FROM ordered ORDER BY ts DESC LIMIT ?"""
     if not df.empty:
         st.dataframe(df, use_container_width=True, hide_index=True)
         if "Δ ($)" in df.columns:
-            fig = px.histogram(df, x="Δ ($)", nbins=20,
-                               color_discrete_sequence=["#4C9BE8"],
-                               title="Price Change Distribution")
-            fig.update_layout(height=250, margin=dict(l=0,r=0,t=40,b=0),
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(color="#aaa"))
+            fig = px.histogram(
+                df,
+                x="Δ ($)",
+                nbins=20,
+                color_discrete_sequence=["#4C9BE8"],
+                title="Price Change Distribution",
+            )
+            fig.update_layout(
+                height=250,
+                margin=dict(l=0, r=0, t=40, b=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#aaa"),
+            )
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No data yet.")
@@ -251,16 +317,28 @@ ORDER BY "Minute" DESC LIMIT ?"""
     if not df.empty:
         st.dataframe(df, use_container_width=True, hide_index=True)
         if "Anomalies" in df.columns:
-            df["Rate %"] = (df["Anomalies"] / df["Checks"].replace(0,1) * 100).round(1)
+            df["Rate %"] = (df["Anomalies"] / df["Checks"].replace(0, 1) * 100).round(1)
             fig = go.Figure()
-            fig.add_trace(go.Bar(x=df["Minute"], y=df["Rate %"],
-                                 marker_color="#E8703A", name="Anomaly Rate %"))
-            fig.update_layout(height=250, margin=dict(l=0,r=0,t=10,b=0),
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(color="#aaa"))
+            fig.add_trace(
+                go.Bar(
+                    x=df["Minute"],
+                    y=df["Rate %"],
+                    marker_color="#E8703A",
+                    name="Anomaly Rate %",
+                )
+            )
+            fig.update_layout(
+                height=250,
+                margin=dict(l=0, r=0, t=10, b=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#aaa"),
+            )
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No analytics data yet.")
 
 st.markdown("---")
-st.caption("Window functions: RANK · DENSE_RANK · NTILE · PERCENT_RANK · LAG · LEAD · AVG OVER · SUM OVER")
+st.caption(
+    "Window functions: RANK · DENSE_RANK · NTILE · PERCENT_RANK · LAG · LEAD · AVG OVER · SUM OVER"
+)

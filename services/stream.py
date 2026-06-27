@@ -15,6 +15,7 @@ from collections import defaultdict
 
 try:
     import websocket
+
     WS_AVAILABLE = True
 except ImportError:
     WS_AVAILABLE = False
@@ -67,8 +68,12 @@ def _push_price(symbol: str, price: float, volume: float = 0.0) -> None:
     if _sma is not None:
         insert_metrics(symbol, _sma, _ema or _sma, _vol, _z or 0.0, _anomaly)
         backbone.publish_metric(
-            symbol, sma=_sma, ema=_ema or _sma, volatility=_vol,
-            z_score=_z or 0.0, anomaly_flag=_anomaly,
+            symbol,
+            sma=_sma,
+            ema=_ema or _sma,
+            volatility=_vol,
+            z_score=_z or 0.0,
+            anomaly_flag=_anomaly,
         )
         if _anomaly:
             backbone.publish_anomaly(symbol, price=price, z_score=_z, method="z_score")
@@ -84,8 +89,12 @@ def _update_candle(symbol: str, price: float, volume: float) -> None:
     state = _candle_state.get(symbol)
     if state is None or state["ts"] != candle_ts:
         _candle_state[symbol] = {
-            "ts": candle_ts, "open": price, "high": price,
-            "low": price, "close": price, "volume": volume
+            "ts": candle_ts,
+            "open": price,
+            "high": price,
+            "low": price,
+            "close": price,
+            "volume": volume,
         }
     else:
         state["high"] = max(state["high"], price)
@@ -94,10 +103,13 @@ def _update_candle(symbol: str, price: float, volume: float) -> None:
         state["volume"] += volume
 
     s = _candle_state[symbol]
-    upsert_candle(symbol, s["ts"], s["open"], s["high"], s["low"], s["close"], s["volume"])
+    upsert_candle(
+        symbol, s["ts"], s["open"], s["high"], s["low"], s["close"], s["volume"]
+    )
 
 
 # ── WebSocket handler ────────────────────────────────────────────────────────
+
 
 def _on_message(ws, message: str) -> None:
     try:
@@ -167,6 +179,7 @@ def _run_rest_fallback() -> None:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+
 def start_stream() -> None:
     """Start the background streaming thread (idempotent)."""
     global _stream_thread
@@ -174,7 +187,9 @@ def start_stream() -> None:
         return
     _stop_event.clear()
     target = _run_websocket if WS_AVAILABLE else _run_rest_fallback
-    _stream_thread = threading.Thread(target=target, daemon=True, name="stochastix-stream")
+    _stream_thread = threading.Thread(
+        target=target, daemon=True, name="stochastix-stream"
+    )
     _stream_thread.start()
     logger.info("Stream thread started (WS=%s)", WS_AVAILABLE)
 

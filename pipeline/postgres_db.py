@@ -48,8 +48,11 @@ def _get_pool():
     global _pool
     if _pool is None:
         import psycopg2.pool
+
         _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, dsn=_dsn())
-        logger.info("PostgreSQL connection pool created (%s:%s/%s)", PG_HOST, PG_PORT, PG_DB)
+        logger.info(
+            "PostgreSQL connection pool created (%s:%s/%s)", PG_HOST, PG_PORT, PG_DB
+        )
     return _pool
 
 
@@ -75,6 +78,7 @@ def _exec(sql: str, params: tuple = None) -> None:
 def _query(sql: str, params: tuple = None):
     """Returns a pandas DataFrame, matching the DuckDB module's API."""
     import pandas as pd
+
     with _conn() as conn:
         return pd.read_sql_query(sql, conn, params=params)
 
@@ -86,6 +90,7 @@ def _query_one(sql: str, params: tuple = None):
 
 
 # ── Schema / hypertable setup ────────────────────────────────────────────
+
 
 def init_db() -> None:
     """Create tables, convert to TimescaleDB hypertables, add indexes,
@@ -182,6 +187,7 @@ def init_db() -> None:
 
 # ── Write API (mirrors pipeline/database.py) ─────────────────────────────
 
+
 def insert_tick(symbol: str, price: float, volume: float = 0.0) -> None:
     try:
         _exec(
@@ -192,9 +198,16 @@ def insert_tick(symbol: str, price: float, volume: float = 0.0) -> None:
         logger.error("insert_tick error: %s", e)
 
 
-def insert_metrics(symbol: str, sma: float, ema: float, volatility: float,
-                    z_score: float, anomaly: bool,
-                    ml_score: float = None, ml_method: str = None) -> None:
+def insert_metrics(
+    symbol: str,
+    sma: float,
+    ema: float,
+    volatility: float,
+    z_score: float,
+    anomaly: bool,
+    ml_score: float = None,
+    ml_method: str = None,
+) -> None:
     try:
         _exec(
             """
@@ -208,8 +221,15 @@ def insert_metrics(symbol: str, sma: float, ema: float, volatility: float,
         logger.error("insert_metrics error: %s", e)
 
 
-def upsert_candle(symbol: str, candle_ts, o: float, h: float,
-                   l: float, c: float, vol: float) -> None:
+def upsert_candle(
+    symbol: str,
+    candle_ts,
+    o: float,
+    h: float,
+    low: float,
+    c: float,
+    vol: float,
+) -> None:
     try:
         _exec(
             """
@@ -221,13 +241,14 @@ def upsert_candle(symbol: str, candle_ts, o: float, h: float,
                 close  = EXCLUDED.close,
                 volume = ohlc_candles.volume + EXCLUDED.volume
             """,
-            (symbol, o, h, l, c, vol, candle_ts),
+            (symbol, o, h, low, c, vol, candle_ts),
         )
     except Exception as e:
         logger.error("upsert_candle error: %s", e)
 
 
 # ── Read API (mirrors pipeline/database.py) ──────────────────────────────
+
 
 def fetch_recent_ticks(symbol: str, limit: int = 300):
     return _query(

@@ -40,7 +40,9 @@ from typing import Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
-STREAM_BACKEND = os.environ.get("STREAM_BACKEND", "none").lower()  # kafka | redis | none
+STREAM_BACKEND = os.environ.get(
+    "STREAM_BACKEND", "none"
+).lower()  # kafka | redis | none
 KAFKA_BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 REDIS_STREAM_MAXLEN = int(os.environ.get("REDIS_STREAM_MAXLEN", "10000"))
@@ -53,7 +55,7 @@ def _topic(kind: str, symbol: str) -> str:
 def make_envelope(kind: str, symbol: str, payload: dict) -> dict:
     return {
         "schema": "stochastix.v1",
-        "kind": kind,            # tick | metric | anomaly
+        "kind": kind,  # tick | metric | anomaly
         "symbol": symbol,
         "ts": datetime.now(timezone.utc).isoformat(),
         "payload": payload,
@@ -61,6 +63,7 @@ def make_envelope(kind: str, symbol: str, payload: dict) -> dict:
 
 
 # ── Kafka backend ─────────────────────────────────────────────────────────
+
 
 class KafkaPublisher:
     """Thin wrapper around kafka-python's KafkaProducer with lazy connect
@@ -76,6 +79,7 @@ class KafkaPublisher:
             return self._producer
         try:
             from kafka import KafkaProducer
+
             self._producer = KafkaProducer(
                 bootstrap_servers=self.bootstrap_servers.split(","),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
@@ -115,9 +119,13 @@ class KafkaPublisher:
 class KafkaTickConsumer:
     """Standalone consumer for downstream services / notebooks / workers."""
 
-    def __init__(self, symbol: str, kind: str = "ticks",
-                 bootstrap_servers: str = KAFKA_BOOTSTRAP_SERVERS,
-                 group_id: str = "stochastix-consumers"):
+    def __init__(
+        self,
+        symbol: str,
+        kind: str = "ticks",
+        bootstrap_servers: str = KAFKA_BOOTSTRAP_SERVERS,
+        group_id: str = "stochastix-consumers",
+    ):
         self.symbol = symbol
         self.kind = kind
         self.bootstrap_servers = bootstrap_servers
@@ -125,6 +133,7 @@ class KafkaTickConsumer:
 
     def poll(self) -> Iterable[dict]:
         from kafka import KafkaConsumer
+
         consumer = KafkaConsumer(
             _topic(self.kind, self.symbol),
             bootstrap_servers=self.bootstrap_servers.split(","),
@@ -137,6 +146,7 @@ class KafkaTickConsumer:
 
 
 # ── Redis Streams backend ────────────────────────────────────────────────
+
 
 class RedisStreamsPublisher:
     """Publishes onto Redis Streams (XADD). Lighter-weight alternative to
@@ -153,7 +163,10 @@ class RedisStreamsPublisher:
             return self._client
         try:
             import redis
-            self._client = redis.Redis.from_url(self.redis_url, socket_connect_timeout=2)
+
+            self._client = redis.Redis.from_url(
+                self.redis_url, socket_connect_timeout=2
+            )
             self._client.ping()
             logger.info("Redis Streams connected: %s", self.redis_url)
         except Exception as e:
@@ -169,7 +182,12 @@ class RedisStreamsPublisher:
         try:
             stream = _topic(kind, symbol)
             envelope = make_envelope(kind, symbol, payload)
-            client.xadd(stream, {"data": json.dumps(envelope)}, maxlen=REDIS_STREAM_MAXLEN, approximate=True)
+            client.xadd(
+                stream,
+                {"data": json.dumps(envelope)},
+                maxlen=REDIS_STREAM_MAXLEN,
+                approximate=True,
+            )
             return True
         except Exception as e:
             logger.debug("Redis Streams publish failed: %s", e)
@@ -180,10 +198,14 @@ class RedisTickConsumer:
     """Standalone consumer reading from a Redis Stream, using a consumer group
     so multiple workers can share the load with at-least-once delivery."""
 
-    def __init__(self, symbol: str, kind: str = "ticks",
-                 redis_url: str = REDIS_URL,
-                 group: str = "stochastix-consumers",
-                 consumer_name: str = "worker-1"):
+    def __init__(
+        self,
+        symbol: str,
+        kind: str = "ticks",
+        redis_url: str = REDIS_URL,
+        group: str = "stochastix-consumers",
+        consumer_name: str = "worker-1",
+    ):
         self.symbol = symbol
         self.kind = kind
         self.redis_url = redis_url
@@ -192,6 +214,7 @@ class RedisTickConsumer:
 
     def poll(self, block_ms: int = 5000) -> Iterable[dict]:
         import redis
+
         client = redis.Redis.from_url(self.redis_url)
         stream = _topic(self.kind, self.symbol)
 
@@ -202,8 +225,11 @@ class RedisTickConsumer:
 
         while True:
             resp = client.xreadgroup(
-                self.group, self.consumer_name,
-                {stream: ">"}, count=10, block=block_ms,
+                self.group,
+                self.consumer_name,
+                {stream: ">"},
+                count=10,
+                block=block_ms,
             )
             for _stream_name, messages in resp or []:
                 for msg_id, fields in messages:
@@ -214,6 +240,7 @@ class RedisTickConsumer:
 
 
 # ── Unified publisher facade ─────────────────────────────────────────────
+
 
 class StreamingBackbone:
     """

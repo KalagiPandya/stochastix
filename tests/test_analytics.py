@@ -5,14 +5,19 @@ Run: pytest tests/ -v
 """
 
 import pytest
-import math
 from services.analytics import (
-    sma, ema, volatility, z_score, is_anomaly,
-    rate_of_change, market_stability,
+    sma,
+    ema,
+    volatility,
+    z_score,
+    is_anomaly,
+    rate_of_change,
+    market_stability,
 )
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def flat_prices():
@@ -34,6 +39,7 @@ def spike_prices():
 
 
 # ── SMA tests ─────────────────────────────────────────────────────────────────
+
 
 class TestSMA:
     def test_returns_none_when_insufficient_data(self):
@@ -58,6 +64,7 @@ class TestSMA:
 
 
 # ── EMA tests ─────────────────────────────────────────────────────────────────
+
 
 class TestEMA:
     def test_returns_none_when_insufficient_data(self):
@@ -84,6 +91,7 @@ class TestEMA:
 
 # ── Volatility tests ──────────────────────────────────────────────────────────
 
+
 class TestVolatility:
     def test_zero_variance_flat(self, flat_prices):
         result = volatility(flat_prices, window=20)
@@ -109,6 +117,7 @@ class TestVolatility:
 
 # ── Z-score tests ─────────────────────────────────────────────────────────────
 
+
 class TestZScore:
     def test_returns_none_when_insufficient_data(self):
         assert z_score(100, [100, 200], window=30) is None
@@ -130,6 +139,7 @@ class TestZScore:
 
 
 # ── Anomaly detection tests ───────────────────────────────────────────────────
+
 
 class TestAnomalyDetection:
     def test_no_anomaly_for_none_z(self):
@@ -154,6 +164,7 @@ class TestAnomalyDetection:
 
 # ── Rate of change tests ──────────────────────────────────────────────────────
 
+
 class TestROC:
     def test_returns_none_when_insufficient(self):
         assert rate_of_change([100, 200], period=10) is None
@@ -174,6 +185,7 @@ class TestROC:
 
 
 # ── Market stability tests ────────────────────────────────────────────────────
+
 
 class TestMarketStability:
     def test_stable_low_vol(self):

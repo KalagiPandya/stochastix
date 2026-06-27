@@ -90,14 +90,30 @@ class TestMLAnomalyEnsemble:
     def test_score_all_returns_three_methods(self, normal_prices):
         ensemble = MLAnomalyEnsemble()
         results = ensemble.score_all("TESTUSDT", normal_prices)
-        assert set(results.keys()) == {"isolation_forest", "prophet", "lstm_autoencoder"}
+        assert set(results.keys()) == {
+            "isolation_forest",
+            "prophet",
+            "lstm_autoencoder",
+        }
         for r in results.values():
             assert isinstance(r, AnomalyResult)
 
     def test_ensemble_vote_with_no_available_detectors(self):
         results = {
-            "a": AnomalyResult(is_anomaly=False, score=0.0, method="a", available=False, error="missing"),
-            "b": AnomalyResult(is_anomaly=False, score=0.0, method="b", available=False, error="missing"),
+            "a": AnomalyResult(
+                is_anomaly=False,
+                score=0.0,
+                method="a",
+                available=False,
+                error="missing",
+            ),
+            "b": AnomalyResult(
+                is_anomaly=False,
+                score=0.0,
+                method="b",
+                available=False,
+                error="missing",
+            ),
         }
         vote = MLAnomalyEnsemble.ensemble_vote(results)
         assert vote["anomaly"] is False

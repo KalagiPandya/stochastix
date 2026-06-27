@@ -5,7 +5,9 @@ configured (the default), all publish calls must be safe no-ops.
 """
 
 from services.streaming_backbone import (
-    StreamingBackbone, make_envelope, _topic,
+    StreamingBackbone,
+    make_envelope,
+    _topic,
 )
 
 

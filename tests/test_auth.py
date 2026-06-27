@@ -22,6 +22,7 @@ def isolated_env(monkeypatch):
 
     # Reset DuckDB module-level connection singleton between tests
     import pipeline.database as dbmod
+
     dbmod._conn = None
 
     yield
@@ -30,12 +31,14 @@ def isolated_env(monkeypatch):
 class TestPasswordHashing:
     def test_hash_and_verify_roundtrip(self):
         from auth.security import hash_password, verify_password
+
         h = hash_password("correct-password")
         assert verify_password("correct-password", h) is True
         assert verify_password("wrong-password", h) is False
 
     def test_hashes_are_salted(self):
         from auth.security import hash_password
+
         h1 = hash_password("same-password")
         h2 = hash_password("same-password")
         assert h1 != h2
@@ -44,6 +47,7 @@ class TestPasswordHashing:
 class TestJWT:
     def test_create_and_decode_token(self):
         from auth.security import create_access_token, decode_access_token
+
         token = create_access_token("alice", "analyst", expires_minutes=5)
         payload = decode_access_token(token)
         assert payload["sub"] == "alice"
@@ -51,10 +55,12 @@ class TestJWT:
 
     def test_invalid_token_returns_none(self):
         from auth.security import decode_access_token
+
         assert decode_access_token("not-a-real-token") is None
 
     def test_expired_token_returns_none(self):
         from auth.security import create_access_token, decode_access_token
+
         token = create_access_token("bob", "viewer", expires_minutes=-1)
         assert decode_access_token(token) is None
 
@@ -62,6 +68,7 @@ class TestJWT:
 class TestRBAC:
     def test_role_hierarchy(self):
         from auth.security import has_permission
+
         assert has_permission("admin", "viewer") is True
         assert has_permission("admin", "analyst") is True
         assert has_permission("admin", "admin") is True

@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 # ── Shared result type ──────────────────────────────────────────────────────
 
+
 @dataclass
 class AnomalyResult:
     is_anomaly: bool
@@ -48,6 +49,7 @@ class AnomalyResult:
 
 # ── 1. Isolation Forest ─────────────────────────────────────────────────────
 
+
 class IsolationForestDetector:
     """
     Unsupervised anomaly detection using scikit-learn's Isolation Forest.
@@ -57,8 +59,13 @@ class IsolationForestDetector:
     regime changes without ever needing labelled training data.
     """
 
-    def __init__(self, window: int = 120, contamination: float = 0.03,
-                 refit_every: int = 10, random_state: int = 42):
+    def __init__(
+        self,
+        window: int = 120,
+        contamination: float = 0.03,
+        refit_every: int = 10,
+        random_state: int = 42,
+    ):
         self.window = window
         self.contamination = contamination
         self.refit_every = refit_every
@@ -71,6 +78,7 @@ class IsolationForestDetector:
     def _check_dependency() -> bool:
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -84,27 +92,31 @@ class IsolationForestDetector:
         win = min(20, len(prices_arr))
         for i in range(len(prices_arr)):
             lo = max(0, i - win + 1)
-            roll_vol[i] = prices_arr[lo:i + 1].std()
+            roll_vol[i] = prices_arr[lo : i + 1].std()
 
         return np.column_stack([prices_arr, returns, roll_vol])
 
     def score(self, prices: list[float]) -> AnomalyResult:
         if not self._available:
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="isolation_forest",
+                is_anomaly=False,
+                score=0.0,
+                method="isolation_forest",
                 available=False,
                 error="scikit-learn not installed — run `pip install scikit-learn`",
             )
 
         if len(prices) < max(30, self.window // 4):
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="isolation_forest",
+                is_anomaly=False,
+                score=0.0,
+                method="isolation_forest",
                 detail={"reason": "insufficient_data", "have": len(prices)},
             )
 
         from sklearn.ensemble import IsolationForest
 
-        subset = prices[-self.window:] if len(prices) >= self.window else prices
+        subset = prices[-self.window :] if len(prices) >= self.window else prices
         X = self._features(subset)
 
         try:
@@ -142,12 +154,15 @@ class IsolationForestDetector:
         except Exception as e:
             logger.error("IsolationForest scoring error: %s", e)
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="isolation_forest",
+                is_anomaly=False,
+                score=0.0,
+                method="isolation_forest",
                 error=str(e),
             )
 
 
 # ── 2. Prophet (forecast-band anomaly detection) ────────────────────────────
+
 
 class ProphetDetector:
     """
@@ -158,8 +173,9 @@ class ProphetDetector:
     than tick-by-tick reactivity.
     """
 
-    def __init__(self, window: int = 200, refit_every: int = 30,
-                 interval_width: float = 0.95):
+    def __init__(
+        self, window: int = 200, refit_every: int = 30, interval_width: float = 0.95
+    ):
         self.window = window
         self.refit_every = refit_every
         self.interval_width = interval_width
@@ -172,10 +188,12 @@ class ProphetDetector:
     def _check_dependency() -> bool:
         try:
             import prophet  # noqa: F401
+
             return True
         except ImportError:
             try:
                 import fbprophet  # noqa: F401
+
                 return True
             except ImportError:
                 return False
@@ -183,14 +201,18 @@ class ProphetDetector:
     def score(self, prices: list[float]) -> AnomalyResult:
         if not self._available:
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="prophet",
+                is_anomaly=False,
+                score=0.0,
+                method="prophet",
                 available=False,
                 error="prophet not installed — run `pip install prophet`",
             )
 
         if len(prices) < max(40, self.window // 4):
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="prophet",
+                is_anomaly=False,
+                score=0.0,
+                method="prophet",
                 detail={"reason": "insufficient_data", "have": len(prices)},
             )
 
@@ -201,17 +223,22 @@ class ProphetDetector:
 
         import pandas as pd
         import logging as _logging
+
         _logging.getLogger("cmdstanpy").setLevel(_logging.WARNING)
         _logging.getLogger("prophet").setLevel(_logging.WARNING)
 
-        subset = prices[-self.window:] if len(prices) >= self.window else prices
+        subset = prices[-self.window :] if len(prices) >= self.window else prices
 
         try:
             if self._model is None or self._ticks_since_fit >= self.refit_every:
-                df = pd.DataFrame({
-                    "ds": pd.date_range(end=pd.Timestamp.utcnow(), periods=len(subset), freq="s"),
-                    "y": subset,
-                })
+                df = pd.DataFrame(
+                    {
+                        "ds": pd.date_range(
+                            end=pd.Timestamp.utcnow(), periods=len(subset), freq="s"
+                        ),
+                        "y": subset,
+                    }
+                )
                 model = Prophet(
                     interval_width=self.interval_width,
                     changepoint_prior_scale=0.5,
@@ -259,12 +286,15 @@ class ProphetDetector:
         except Exception as e:
             logger.error("Prophet scoring error: %s", e)
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="prophet",
+                is_anomaly=False,
+                score=0.0,
+                method="prophet",
                 error=str(e),
             )
 
 
 # ── 3. LSTM Autoencoder ──────────────────────────────────────────────────────
+
 
 class LSTMAnomalyDetector:
     """
@@ -278,8 +308,13 @@ class LSTMAnomalyDetector:
     no external dataset required, matching the rest of the live pipeline.
     """
 
-    def __init__(self, seq_len: int = 20, hidden_size: int = 16,
-                 retrain_every: int = 50, epochs: int = 5):
+    def __init__(
+        self,
+        seq_len: int = 20,
+        hidden_size: int = 16,
+        retrain_every: int = 50,
+        epochs: int = 5,
+    ):
         self.seq_len = seq_len
         self.hidden_size = hidden_size
         self.retrain_every = retrain_every
@@ -295,12 +330,12 @@ class LSTMAnomalyDetector:
     def _check_dependency() -> bool:
         try:
             import torch  # noqa: F401
+
             return True
         except ImportError:
             return False
 
     def _build_model(self):
-        import torch
         import torch.nn as nn
 
         class LSTMAutoencoder(nn.Module):
@@ -324,12 +359,14 @@ class LSTMAnomalyDetector:
         n = len(prices) - self.seq_len + 1
         if n <= 0:
             return np.empty((0, self.seq_len))
-        return np.stack([prices[i:i + self.seq_len] for i in range(n)])
+        return np.stack([prices[i : i + self.seq_len] for i in range(n)])
 
     def score(self, prices: list[float]) -> AnomalyResult:
         if not self._available:
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="lstm_autoencoder",
+                is_anomaly=False,
+                score=0.0,
+                method="lstm_autoencoder",
                 available=False,
                 error="torch not installed — run `pip install torch`",
             )
@@ -337,8 +374,14 @@ class LSTMAnomalyDetector:
         min_needed = self.seq_len * 3
         if len(prices) < min_needed:
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="lstm_autoencoder",
-                detail={"reason": "insufficient_data", "have": len(prices), "need": min_needed},
+                is_anomaly=False,
+                score=0.0,
+                method="lstm_autoencoder",
+                detail={
+                    "reason": "insufficient_data",
+                    "have": len(prices),
+                    "need": min_needed,
+                },
             )
 
         import torch
@@ -352,7 +395,9 @@ class LSTMAnomalyDetector:
                 self._scaler_std = float(prices_arr.std() or 1.0)
 
                 normed = (prices_arr - self._scaler_mean) / self._scaler_std
-                windows = self._make_windows(normed[:-1])  # train on history, not the live tick
+                windows = self._make_windows(
+                    normed[:-1]
+                )  # train on history, not the live tick
 
                 if len(windows) >= 2:
                     self._model = self._build_model()
@@ -374,13 +419,17 @@ class LSTMAnomalyDetector:
 
             if self._model is None:
                 return AnomalyResult(
-                    is_anomaly=False, score=0.0, method="lstm_autoencoder",
+                    is_anomaly=False,
+                    score=0.0,
+                    method="lstm_autoencoder",
                     detail={"reason": "model_not_yet_trained"},
                 )
 
             normed = (prices_arr - self._scaler_mean) / self._scaler_std
-            latest_window = normed[-self.seq_len:]
-            X_latest = torch.tensor(latest_window, dtype=torch.float32).reshape(1, self.seq_len, 1)
+            latest_window = normed[-self.seq_len :]
+            X_latest = torch.tensor(latest_window, dtype=torch.float32).reshape(
+                1, self.seq_len, 1
+            )
 
             self._model.eval()
             with torch.no_grad():
@@ -396,7 +445,9 @@ class LSTMAnomalyDetector:
             threshold = err_mean + 2.5 * err_std
 
             anomaly = error > threshold and len(self._error_history) > 10
-            normalised_score = float(np.clip(error / (threshold or 1e-6), 0.0, 2.0) / 2.0)
+            normalised_score = float(
+                np.clip(error / (threshold or 1e-6), 0.0, 2.0) / 2.0
+            )
 
             return AnomalyResult(
                 is_anomaly=bool(anomaly),
@@ -411,12 +462,15 @@ class LSTMAnomalyDetector:
         except Exception as e:
             logger.error("LSTM autoencoder scoring error: %s", e)
             return AnomalyResult(
-                is_anomaly=False, score=0.0, method="lstm_autoencoder",
+                is_anomaly=False,
+                score=0.0,
+                method="lstm_autoencoder",
                 error=str(e),
             )
 
 
 # ── Ensemble facade ──────────────────────────────────────────────────────────
+
 
 class MLAnomalyEnsemble:
     """
@@ -450,7 +504,9 @@ class MLAnomalyEnsemble:
         votes = sum(1 for r in usable if r.is_anomaly)
         avg_score = float(np.mean([r.score for r in usable]))
         return {
-            "anomaly": votes >= max(1, (len(usable) // 2) + 1) if len(usable) > 1 else votes >= 1,
+            "anomaly": votes >= max(1, (len(usable) // 2) + 1)
+            if len(usable) > 1
+            else votes >= 1,
             "votes": votes,
             "of": len(usable),
             "avg_score": avg_score,

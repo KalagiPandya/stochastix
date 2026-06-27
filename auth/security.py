@@ -43,16 +43,18 @@ if not JWT_SECRET_KEY:
 # analyst — read/write access to analytics, anomaly tuning, data export
 # viewer  — read-only dashboard access
 ROLES = {
-    "admin":   {"level": 3, "description": "Full administrative access"},
+    "admin": {"level": 3, "description": "Full administrative access"},
     "analyst": {"level": 2, "description": "Configure analytics & export data"},
-    "viewer":  {"level": 1, "description": "Read-only dashboard access"},
+    "viewer": {"level": 1, "description": "Read-only dashboard access"},
 }
 
 
 # ── Password hashing ─────────────────────────────────────────────────────
 
+
 def hash_password(plain_password: str) -> str:
     import bcrypt
+
     # bcrypt has a hard 72-byte input limit; truncate (standard practice)
     # so longer passphrases don't raise instead of silently failing.
     truncated = plain_password.encode("utf-8")[:72]
@@ -61,6 +63,7 @@ def hash_password(plain_password: str) -> str:
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
     import bcrypt
+
     truncated = plain_password.encode("utf-8")[:72]
     try:
         return bcrypt.checkpw(truncated, password_hash.encode("utf-8"))
@@ -70,9 +73,12 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 # ── JWT tokens ────────────────────────────────────────────────────────────
 
-def create_access_token(username: str, role: str,
-                         expires_minutes: int = JWT_EXPIRE_MINUTES) -> str:
+
+def create_access_token(
+    username: str, role: str, expires_minutes: int = JWT_EXPIRE_MINUTES
+) -> str:
     import jwt
+
     now = datetime.now(timezone.utc)
     payload = {
         "sub": username,
@@ -85,6 +91,7 @@ def create_access_token(username: str, role: str,
 
 def decode_access_token(token: str) -> Optional[dict]:
     import jwt
+
     try:
         return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
@@ -97,20 +104,26 @@ def decode_access_token(token: str) -> Optional[dict]:
 
 # ── User management (DB-backed) ──────────────────────────────────────────
 
-def register_user(username: str, email: str, password: str,
-                   role: str = "viewer") -> tuple[bool, str]:
+
+def register_user(
+    username: str, email: str, password: str, role: str = "viewer"
+) -> tuple[bool, str]:
     """Create a new user. Returns (success, message)."""
     if role not in ROLES:
         return False, f"Invalid role '{role}'. Must be one of {list(ROLES)}."
 
     from pipeline import DB_BACKEND
+
     pw_hash = hash_password(password)
 
     try:
         if DB_BACKEND == "postgres":
             from pipeline.postgres_db import _exec, _query_one
-            existing = _query_one("SELECT id FROM users WHERE username = %s OR email = %s",
-                                   (username, email))
+
+            existing = _query_one(
+                "SELECT id FROM users WHERE username = %s OR email = %s",
+                (username, email),
+            )
             if existing:
                 return False, "Username or email already registered."
             _exec(
@@ -119,8 +132,11 @@ def register_user(username: str, email: str, password: str,
             )
         else:
             from pipeline.database import _exec, _query_one
-            existing = _query_one("SELECT id FROM users WHERE username = ? OR email = ?",
-                                   [username, email])
+
+            existing = _query_one(
+                "SELECT id FROM users WHERE username = ? OR email = ?",
+                [username, email],
+            )
             if existing:
                 return False, "Username or email already registered."
             _exec(
@@ -143,12 +159,14 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     try:
         if DB_BACKEND == "postgres":
             from pipeline.postgres_db import _query_one
+
             row = _query_one(
                 "SELECT id, username, email, password_hash, role, is_active FROM users WHERE username = %s",
                 (username,),
             )
         else:
             from pipeline.database import _query_one
+
             row = _query_one(
                 "SELECT id, username, email, password_hash, role, is_active FROM users WHERE username = ?",
                 [username],
@@ -179,7 +197,9 @@ def ensure_default_admin() -> None:
     if authenticate_user(admin_user, admin_pass) is not None:
         return  # already exists & matches
 
-    ok, msg = register_user(admin_user, f"{admin_user}@stochastix.local", admin_pass, role="admin")
+    ok, msg = register_user(
+        admin_user, f"{admin_user}@stochastix.local", admin_pass, role="admin"
+    )
     if ok:
         logger.info("Bootstrapped default admin user '%s'", admin_user)
     else:
@@ -188,9 +208,13 @@ def ensure_default_admin() -> None:
 
 # ── RBAC guard for Streamlit pages ───────────────────────────────────────
 
+
 def has_permission(user_role: str, required_role: str) -> bool:
     """True if user_role's access level >= required_role's level."""
-    return ROLES.get(user_role, {"level": 0})["level"] >= ROLES.get(required_role, {"level": 99})["level"]
+    return (
+        ROLES.get(user_role, {"level": 0})["level"]
+        >= ROLES.get(required_role, {"level": 99})["level"]
+    )
 
 
 def require_role(required_role: str):
@@ -251,9 +275,15 @@ def _render_login_form():
             new_username = st.text_input("Choose a username")
             new_email = st.text_input("Email")
             new_password = st.text_input("Choose a password", type="password")
-            role = st.selectbox("Role", list(ROLES.keys()), index=2,
-                                 help="In production, role assignment should be admin-controlled.")
-            reg_submitted = st.form_submit_button("Create Account", use_container_width=True)
+            role = st.selectbox(
+                "Role",
+                list(ROLES.keys()),
+                index=2,
+                help="In production, role assignment should be admin-controlled.",
+            )
+            reg_submitted = st.form_submit_button(
+                "Create Account", use_container_width=True
+            )
         if reg_submitted:
             ok, msg = register_user(new_username, new_email, new_password, role)
             if ok:
