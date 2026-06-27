@@ -329,24 +329,7 @@ Stochastix/
 
 ---
 
-## 📄 Resume Bullet
 
-```
-Built Stochastix, a real-time financial analytics platform in Python: ingests live
-BTC/ETH/SOL ticks via Binance WebSocket, streams events through Apache Kafka /
-Redis Streams, and persists to PostgreSQL + TimescaleDB (hypertables, compression,
-retention) with DuckDB fallback. Detects anomalies using Isolation Forest, Prophet,
-and LSTM Autoencoder (majority-vote ensemble) alongside Z-score baselines. Advanced
-SQL analytics with window functions (RANK, LAG, LEAD, NTILE, PERCENT_RANK). Business
-KPI dashboards, price forecasting with confidence bands, CSV/Excel reporting, and a
-Power BI connector. JWT + bcrypt RBAC (admin/analyst/viewer). 11-page Streamlit
-dashboard, multi-stage Docker image, Terraform deploy to AWS ECS Fargate / GCP Cloud
-Run / Azure Container Apps. GitHub Actions CI/CD, 56-test pytest suite.
-
-Skills: Python · SQL · Power BI · Streamlit · PostgreSQL · Docker · ML · Analytics
-```
-
----
 
 <div align="center">
 
