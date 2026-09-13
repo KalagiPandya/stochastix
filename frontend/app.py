@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 import streamlit as st
 
 # Ensure project root is in sys.path
@@ -7,10 +8,49 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from pipeline.database import init_db
+from pipeline.database import init_db, get_db_connection
+from pipeline.simulator import MarketSimulator
 
 init_db()
 
+# --- CLOUD / LOCAL AUTO BACKGROUND STREAM WORKER ---
+@st.cache_resource
+def start_background_data_feed():
+    """
+    Spawns a background thread on application startup to ensure 
+    the DuckDB database is continuously receiving tick stream data.
+    """
+    def worker():
+        try:
+            # Try connecting to live exchange feed first
+            from pipeline.ingest import start_pipeline
+            start_pipeline()
+        except Exception:
+            # Resilient fallback to high-fidelity market simulator
+            sim = MarketSimulator()
+            sim.run(interval_sec=1.0)
+
+    # Seed initial buffer if database has fewer than 20 rows
+    try:
+        conn = get_db_connection(read_only=True)
+        count = conn.execute("SELECT count(*) FROM market_data").fetchone()[0]
+        conn.close()
+    except Exception:
+        count = 0
+
+    if count < 20:
+        sim = MarketSimulator()
+        sim.run(interval_sec=0.01, total_ticks=30)
+
+    # Launch streaming daemon thread
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+    return True
+
+# Initialize data feed daemon
+start_background_data_feed()
+
+# --- STREAMLIT UI ---
 st.set_page_config(
     page_title="Stochastix Control Center",
     page_icon="📊",
