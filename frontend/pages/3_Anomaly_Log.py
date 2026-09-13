@@ -9,7 +9,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from pipeline.database import get_db_connection
-from app.alerts import get_recent_alerts
+from pipeline.alerts import get_recent_alerts
 
 st.set_page_config(page_title="Anomaly Log | Stochastix", page_icon="⚠️", layout="wide")
 
@@ -40,8 +40,12 @@ with col1:
 
 with col2:
     st.subheader("⚡ Operational Risk Alerts")
-    df_alerts = get_recent_alerts(limit=20)
-    if df_alerts.empty:
+    try:
+        df_alerts = get_recent_alerts(limit=20)
+    except Exception:
+        df_alerts = None
+
+    if df_alerts is None or df_alerts.empty:
         st.info("No active operational alerts logged.")
     else:
         st.dataframe(df_alerts, use_container_width=True)
