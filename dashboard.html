@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stochastix | Quantitative Trading & Analytics Console</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-cyan-500 selection:text-slate-950">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } = Recharts;
+
+        // Automatically resolve API Base URL based on deployment or local dev
+        const getApiBaseUrl = () => {
+            if (window.location.protocol.startsWith("http")) {
+                return window.location.origin;
+            }
+            return "http://localhost:8000";
+        };
+
+        function App() {
+            const API_BASE = getApiBaseUrl();
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [username, setUsername] = useState("admin");
+            const [password, setPassword] = useState("securepass123");
+            const [token, setToken] = useState("");
+            const [error, setError] = useState("");
+            const [loading, setLoading] = useState(false);
+            
+            const [asset, setAsset] = useState("BTC-USD");
+            const [pollInterval, setPollInterval] = useState(2000);
+            const [isPaused, setIsPaused] = useState(false);
+            const [marketData, setMarketData] = useState([]);
+            const [metrics, setMetrics] = useState({ 
+                price: 0, 
+                sma: 0, 
+                ema: 0, 
+                volatility: 0, 
+                z_score: 0, 
+                bb_upper: 0, 
+                bb_lower: 0, 
+                anomaly: false 
+            });
+            const [alerts, setAlerts] = useState([]);
+            const [activeTab, setActiveTab] = useState("chart"); // 'chart' | 'alerts' | 'raw'
+            const [lastUpdated, setLastUpdated] = useState(null);
+
+            // --- AUTHENTICATION ---
+            const handleLogin = async (e) => {
+                if (e) e.preventDefault();
+                setError("");
+                setLoading(true);
+                try {
+                    const formData = new URLSearchParams();
+                    formData.append("username", username);
+                    formData.append("password", password);
+
+                    const response = await fetch(`${API_BASE}/token`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Invalid username or password");
+                    }
+                    const data = await response.json();
+                    setToken(data.access_token);
+                    setIsLoggedIn(true);
+                } catch (err) {
+                    setError(err.message || "Failed to connect to authentication API");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // --- DATA POLLING LOOP ---
+            useEffect(() => {
+                if (!isLoggedIn || isPaused) return;
+
+                const fetchMetrics = async () => {
+                    try {
+                        // Fetch Market Data & Metrics
+                        const res = await fetch(`${API_BASE}/api/market/${asset}`, {
+                            headers: { "Authorization": `Bearer ${token}` }
+                        });
+                        if (res.ok) {
+                            const resData = await res.json();
+                            if (resData.data && resData.data.length > 0) {
+                                setMarketData(resData.data);
+                            }
+                            if (resData.metrics) {
+                                setMetrics(resData.metrics);
+                            }
+                            setLastUpdated(new Date().toLocaleTimeString());
+                        }
+
+                        // Fetch Alerts
+                        const alertRes = await fetch(`${API_BASE}/api/alerts?limit=10`, {
+                            headers: { "Authorization": `Bearer ${token}` }
+                        });
+                        if (alertRes.ok) {
+                            const alertData = await alertRes.json();
+                            setAlerts(alertData.alerts || []);
+                        }
+                    } catch (err) {
+                        console.error("Data polling error: ", err);
+                    }
+                };
+
+                fetchMetrics();
+                const interval = setInterval(fetchMetrics, pollInterval);
+                return () => clearInterval(interval);
+            }, [isLoggedIn, asset, token, pollInterval, isPaused, API_BASE]);
+
+            // --- VIEW 1: AUTHENTICATION SCREEN ---
+            if (!isLoggedIn) {
+                return (
+                    <div className="flex min-h-screen items-center justify-center px-4 bg-radial from-slate-900 to-slate-950">
+                        <div className="w-full max-w-md space-y-6 border border-slate-800/80 bg-slate-900/60 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl shadow-cyan-950/40">
+                            <div className="text-center space-y-2">
+                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono font-black text-xl mb-1">
+                                    Σ
+                                </div>
+                                <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+                                    STOCHASTIX
+                                </h1>
+                                <p className="text-xs text-slate-400 font-mono uppercase tracking-widest">
+                                    Algorithmic Quant Terminal
+                                </p>
+                            </div>
+
+                            <form className="space-y-4" onSubmit={handleLogin}>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Username</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono" 
+                                        placeholder="admin" 
+                                        value={username} 
+                                        onChange={e => setUsername(e.target.value)} 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Password</label>
+                                    <input 
+                                        type="password" 
+                                        required 
+                                        className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono" 
+                                        placeholder="securepass123" 
+                                        value={password} 
+                                        onChange={e => setPassword(e.target.value)} 
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 font-medium">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button 
+                                    type="submit" 
+                                    disabled={loading}
+                                    className="w-full cursor-pointer rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 py-3.5 font-bold text-sm text-white shadow-lg shadow-cyan-500/25 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
+                                >
+                                    {loading ? "Authenticating..." : "Connect to Quant Node"}
+                                </button>
+                            </form>
+
+                            <div className="pt-2 text-center text-xs text-slate-500 font-mono">
+                                Default Node: <span className="text-slate-400">admin / securepass123</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- VIEW 2: TRADING DASHBOARD ---
+            return (
+                <div className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+                    {/* Header Bar */}
+                    <header className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800/80 pb-6 gap-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-mono font-black text-lg">
+                                Σ
+                            </div>
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">
+                                    STOCHASTIX // QUANT CONSOLE
+                                </h1>
+                                <div className="flex items-center space-x-2 mt-0.5">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    <p className="text-xs text-slate-400 font-mono uppercase tracking-wider">
+                                        Live Stream Active {lastUpdated && `| Sync: ${lastUpdated}`}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            {/* Asset Picker */}
+                            <select 
+                                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs sm:text-sm font-semibold text-cyan-400 focus:border-cyan-500 outline-none cursor-pointer"
+                                value={asset} 
+                                onChange={e => setAsset(e.target.value)}
+                            >
+                                <option value="BTC-USD">Bitcoin (BTC-USD)</option>
+                                <option value="ETH-USD">Ethereum (ETH-USD)</option>
+                            </select>
+
+                            {/* Stream Interval Controls */}
+                            <button 
+                                onClick={() => setIsPaused(!isPaused)} 
+                                className={`text-xs px-3 py-2 rounded-xl border transition-all font-mono cursor-pointer ${isPaused ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'}`}
+                            >
+                                {isPaused ? "▶ Resume" : "⏸ Pause"}
+                            </button>
+
+                            {/* Session Logout */}
+                            <button 
+                                onClick={() => setIsLoggedIn(false)} 
+                                className="text-xs border border-slate-800 hover:bg-slate-900 px-3 py-2 rounded-xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer font-mono"
+                            >
+                                Terminate
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Metric Stats Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="border border-slate-800/80 bg-slate-900/40 p-4 sm:p-5 rounded-2xl backdrop-blur-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Live Rate ({asset})</p>
+                            <p className="text-xl sm:text-2xl font-black font-mono text-cyan-400 mt-2">
+                                ${metrics.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </p>
+                        </div>
+
+                        <div className="border border-slate-800/80 bg-slate-900/40 p-4 sm:p-5 rounded-2xl backdrop-blur-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">SMA (14-Period)</p>
+                            <p className="text-xl sm:text-2xl font-black font-mono text-slate-200 mt-2">
+                                ${metrics.sma.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </p>
+                        </div>
+
+                        <div className="border border-slate-800/80 bg-slate-900/40 p-4 sm:p-5 rounded-2xl backdrop-blur-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rolling Volatility (σ)</p>
+                            <p className="text-xl sm:text-2xl font-black font-mono text-purple-400 mt-2">
+                                {metrics.volatility.toFixed(4)}
+                            </p>
+                        </div>
+
+                        <div className={`border p-4 sm:p-5 rounded-2xl transition-all duration-300 backdrop-blur-sm ${metrics.anomaly ? 'bg-rose-950/40 border-rose-500/50 text-rose-200 shadow-lg shadow-rose-950/50' : 'bg-slate-900/40 border-slate-800/80 text-emerald-400'}`}>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Risk & Anomaly Flag</p>
+                            <p className="text-xl sm:text-2xl font-black font-mono mt-2">
+                                {metrics.anomaly ? "⚠️ ANOMALY (Z>2.2)" : "🟢 RISK NOMINAL"}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Navigation Tabs */}
+                    <div className="flex border-b border-slate-800 space-x-2 text-sm font-semibold">
+                        <button 
+                            onClick={() => setActiveTab("chart")}
+                            className={`pb-3 px-4 border-b-2 font-mono transition-all cursor-pointer ${activeTab === 'chart' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+                        >
+                            📊 Real-Time Chart & Bands
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab("alerts")}
+                            className={`pb-3 px-4 border-b-2 font-mono transition-all cursor-pointer ${activeTab === 'alerts' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+                        >
+                            ⚡ Risk Alerts ({alerts.length})
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab("raw")}
+                            className={`pb-3 px-4 border-b-2 font-mono transition-all cursor-pointer ${activeTab === 'raw' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+                        >
+                            📋 Recent Trade Logs
+                        </button>
+                    </div>
+
+                    {/* Tab 1: Dynamic Plot Chart */}
+                    {activeTab === "chart" && (
+                        <div className="border border-slate-800 bg-slate-900/20 p-4 sm:p-6 rounded-3xl h-[420px]">
+                            {marketData.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-slate-500 font-mono text-sm">
+                                    Awaiting tick stream data from database...
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={marketData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                        <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
+                                        <YAxis domain={['auto', 'auto']} stroke="#64748b" fontSize={11} tickLine={false} orientation="right" />
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', fontFamily: 'JetBrains Mono' }} 
+                                        />
+                                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: '11px' }} />
+                                        <Line type="monotone" name="Execution Price" dataKey="price" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                                        <Line type="monotone" name="SMA 14" dataKey="sma" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                                        <Line type="monotone" name="Upper Band" dataKey="bb_upper" stroke="#ef4444" strokeWidth={1} dot={false} strokeOpacity={0.6} />
+                                        <Line type="monotone" name="Lower Band" dataKey="bb_lower" stroke="#10b981" strokeWidth={1} dot={false} strokeOpacity={0.6} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Tab 2: Risk Alerts */}
+                    {activeTab === "alerts" && (
+                        <div className="border border-slate-800 bg-slate-900/30 rounded-2xl overflow-hidden">
+                            <div className="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                                <h3 className="text-sm font-bold text-slate-200">Statistical Anomaly & Threshold Warnings</h3>
+                                <span className="text-xs text-slate-400 font-mono">{alerts.length} Total Logs</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm text-slate-400">
+                                    <thead className="bg-slate-950/60 text-xs text-slate-400 uppercase font-semibold">
+                                        <tr>
+                                            <th className="px-6 py-3">Timestamp</th>
+                                            <th className="px-6 py-3">Asset</th>
+                                            <th className="px-6 py-3">Severity</th>
+                                            <th className="px-6 py-3">Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800/50">
+                                        {alerts.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="px-6 py-6 text-center text-slate-500 font-mono">
+                                                    No risk alerts flagged. Market parameters are within normal variance.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            alerts.map((al, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-900/40 transition-all">
+                                                    <td className="px-6 py-3 font-mono text-xs text-slate-400">{al.timestamp}</td>
+                                                    <td className="px-6 py-3 font-bold text-slate-200">{al.symbol}</td>
+                                                    <td className="px-6 py-3">
+                                                        <span className={`px-2 py-1 rounded-md text-xs font-mono font-semibold ${al.severity === 'HIGH' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
+                                                            {al.severity}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-slate-300 font-mono text-xs">{al.message}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tab 3: Trade Table */}
+                    {activeTab === "raw" && (
+                        <div className="border border-slate-800 bg-slate-900/30 rounded-2xl overflow-hidden">
+                            <div className="bg-slate-900/80 px-5 py-3 border-b border-slate-800">
+                                <h3 className="text-sm font-bold text-slate-300">Live Database Tick Window</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm text-slate-400">
+                                    <thead className="bg-slate-950/60 text-xs text-slate-400 uppercase font-semibold">
+                                        <tr>
+                                            <th className="px-6 py-3">Time</th>
+                                            <th className="px-6 py-3">Asset</th>
+                                            <th className="px-6 py-3">Execution Price</th>
+                                            <th className="px-6 py-3">Trade Volume</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800/50">
+                                        {marketData.slice(-10).reverse().map((row, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-900/40 transition-all font-mono text-xs">
+                                                <td className="px-6 py-3 text-cyan-400">{row.time}</td>
+                                                <td className="px-6 py-3 font-bold text-slate-300">{asset}</td>
+                                                <td className="px-6 py-3 text-slate-100">${row.price.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                <td className="px-6 py-3 text-slate-400">{row.volume.toFixed(6)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

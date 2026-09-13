@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database files & Local Buffers
+*.db
+*.db.wal
+*.duckdb
+*.sqlite
+*.sqlite3
+data/raw/*.db
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Credentials
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Temporary files
+*.log
+scratch/
+.pytest_cache/

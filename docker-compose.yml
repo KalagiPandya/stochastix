@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Stochastix FastAPI Backend + React Trading Terminal
+  api-terminal:
+    build: .
+    command: python run.py
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - STOCHASTIX_USER=admin
+      - STOCHASTIX_PASSWORD=securepass123
+    volumes:
+      - stochastix-data:/app/data
+    restart: unless-stopped
+
+  # Stochastix Streamlit Quantitative Analytics Portal
+  streamlit-portal:
+    build: .
+    command: streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - stochastix-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  stochastix-data:

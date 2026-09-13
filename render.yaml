@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: stochastix-quant-terminal
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: STOCHASTIX_USER
+        value: admin
+      - key: STOCHASTIX_PASSWORD
+        generateValue: true
+    healthCheckPath: /health
+    autoDeploy: true
