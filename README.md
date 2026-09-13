@@ -1,12 +1,34 @@
-# STOCHASTIX // Real-Time Quantitative Streaming & Anomaly Detection Platform
+<div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io)
-[![DuckDB](https://img.shields.io/badge/DuckDB-Columnar%20OLAP-FFF000.svg)](https://duckdb.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<!--  ╔══════════════════════════════════════════════════════════╗
+      ║              STOCHASTIX  —  HERO HEADER                 ║
+      ╚══════════════════════════════════════════════════════════╝  -->
 
-**Stochastix** is a high-frequency cryptocurrency streaming, quantitative time-series analytics, and statistical anomaly detection engine. It connects directly to the Coinbase WebSocket exchange feed (`BTC-USD`, `ETH-USD`), writes high-throughput tick matches into an embedded **DuckDB** columnar store, computes rolling statistical indicators in real-time, and surfaces them through both a **Modern React Trading Terminal** and a **Multi-Page Streamlit Analytics Console**.
+<img src="https://capsule-render.vercel.app/api?type=venom&color=0:0d0221,30:1a0533,60:2d1b69,85:4c1d95,100:7c3aed&height=260&section=header&text=STOCHASTIX&fontSize=72&fontColor=e9d5ff&fontAlignY=42&desc=Real-Time%20Financial%20Analytics%20%E2%80%94%20Crypto%20Streams%20%C2%B7%20ML%20Anomaly%20Detection%20%C2%B7%20Cloud%20Native&descAlignY=65&descSize=15&fontStyle=bold&animation=twinkling" width="100%"/>
+
+<br/>
+
+<!-- ── Core Stack Badges ── -->
+[![Python](https://img.shields.io/badge/Python_3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Live_Portal-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://kalagipandya-stochastix-frontendapp-9bwmcv.streamlit.app)
+[![FastAPI](https://img.shields.io/badge/FastAPI-REST_API-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![DuckDB](https://img.shields.io/badge/DuckDB-Columnar_OLAP-FFC832?style=flat-square&logo=duckdb&logoColor=black)](https://duckdb.org)
+[![Tests](https://img.shields.io/badge/Tests-Passing-6d28d9?style=flat-square&logo=pytest&logoColor=white)](tests/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-7c3aed?style=flat-square&logo=githubactions&logoColor=white)](.github/workflows)
+
+<br/>
+
+### 🌐 Live Production Application
+👉 **[Click Here to Launch Stochastix on Streamlit Cloud](https://kalagipandya-stochastix-frontendapp-9bwmcv.streamlit.app)**
+
+<br/>
+
+> **Stochastix** is a high-throughput cryptocurrency streaming, quantitative time-series analytics, and statistical anomaly detection engine. It connects directly to live exchange WebSocket feeds (`BTC-USD`, `ETH-USD`), writes ticks into an embedded **DuckDB** columnar store, computes rolling statistical indicators in real-time, and surfaces them through both a **Multi-Page Streamlit Analytics Console** and a **FastAPI + Modern React Trading Terminal**.
+
+<br/>
+
+</div>
 
 ---
 
@@ -14,47 +36,47 @@
 
 ```mermaid
 flowchart TD
-    subgraph Data Ingestion Layer
-        A[Coinbase Pro WebSocket\nwss://ws-feed.exchange.coinbase.com] -->|Live Trade Ticks| B[pipeline/ingest.py]
-        S[pipeline/simulator.py\nGBM + Jump-Diffusion] -.->|Synthetic Ticks / Offline| B
+    subgraph Ingestion Layer
+        A[Coinbase Exchange WebSocket\nwss://ws-feed.exchange.coinbase.com] -->|Live Trade Ticks| B[pipeline/ingest.py]
+        S[pipeline/simulator.py\nGBM + Jump-Diffusion] -.->|Synthetic / Offline Mode| B
     end
 
-    subgraph Storage & Time-Series Engine
-        B -->|High-Throughput Write| C[(DuckDB Columnar DB\nstochastix.db)]
-        D[pipeline/processor.py] <-->|Vectorized SQL & Pandas| C
-    end
-
-    subgraph Quantitative Analytics
-        D --> E[Rolling SMA-14 & EMA-12]
+    subgraph Storage & Analytics Engine
+        B -->|Vectorized SQL Writes| C[(DuckDB Columnar DB\nstochastix.db)]
+        D[pipeline/processor.py] <-->|Rolling Calculations| C
+        D --> E[SMA-14 & EMA-12 Moving Averages]
         D --> F[Rolling Volatility \u03c3]
         D --> G[Bollinger Bands \u00b12\u03c3]
-        D --> H[Dynamic Z-Scores & Anomaly Flags]
+        D --> H[Dynamic Z-Scores & Anomaly Detection]
+        H --> AL[pipeline/alerts.py\nOperational Risk Logger]
     end
 
-    subgraph Delivery & Presentation Layer
-        C --> I[FastAPI Backend\nrun.py :8000]
-        I --> J[React + Tailwind Trading Terminal\n/dashboard]
-        I --> K[REST & OAuth2 API Endpoints\n/api/market/{symbol}]
-        C --> L[Streamlit Multi-Page Portal\nfrontend/app.py :8501]
+    subgraph User Interfaces
+        C --> J[Streamlit Analytics Portal\nfrontend/app.py :8501]
+        C --> K[FastAPI Backend\nrun.py :8000]
+        K --> L[React Trading Terminal\n/dashboard]
     end
 ```
 
 ---
 
-## ✨ Key Features
+## ✨ Key Capabilities
 
-1. **Sub-Millisecond Ingestion**: Connects to the Coinbase WebSocket feed with automatic reconnection, heartbeat ping/pong, and resilient ISO-8601 timestamp normalization.
-2. **Embedded Columnar Storage**: Leverages **DuckDB** for zero-latency in-memory and on-disk columnar analytical queries without requiring standalone database servers.
-3. **Quantitative Metrics Engine**:
-   - **Simple Moving Averages (SMA-14)** and **Exponential Moving Averages (EMA-12)**.
+1. **Sub-Millisecond Stream Ingestion**: Subscribes to exchange WebSocket feeds with resilient ISO-8601 parsing, ping/pong heartbeats, and auto-reconnection.
+2. **Embedded Columnar Storage (DuckDB)**: Zero-configuration in-memory/on-disk OLAP columnar queries with sub-2.5ms latency without external database servers.
+3. **Quantitative Metrics Suite**:
+   - **Simple Moving Average (SMA-14)** & **Exponential Moving Average (EMA-12)**.
    - **Rolling Standard Deviation & Volatility ($\sigma$)**.
    - **Bollinger Bands ($\mu \pm 2\sigma$)**.
-   - **Dynamic Z-Score ($Z = \frac{P_t - \mu}{\sigma}$)** with statistical threshold anomaly flagging ($|Z| > 2.2$).
+   - **Dynamic Z-Score ($Z = \frac{P_t - \mu}{\sigma}$)** with statistical threshold anomaly detection ($|Z| > 2.2$).
    - **Volume Weighted Average Price (VWAP)**.
-4. **Realistic Market Simulator**: Built-in Geometric Brownian Motion (GBM) with Merton Jump-Diffusion to inject realistic price trends, volatility clusters, and flash moves for offline testing and demos.
-5. **Dual User Interfaces**:
-   - **FastAPI + React Dashboard**: High-impact, dark-mode terminal with OAuth2 authentication, interactive Recharts graphs, Bollinger Band envelopes, and operational risk alerts.
-   - **Streamlit Multi-Page Portal**: Comprehensive exploratory data analysis dashboard with volatility distribution curves and anomaly inspection logs.
+4. **Merton Jump-Diffusion Simulation Engine**: High-fidelity stochastic market generator (Geometric Brownian Motion + Poisson Jump-Diffusion) for offline demonstrations and testing.
+5. **Multi-Page Streamlit Analytics Console**:
+   - 🏠 **Control Center Home**: Real-time market tickers, database counter, and module navigation.
+   - 📈 **Real-Time Stream Flow**: Live tick charts with dynamic Bollinger Band envelopes and database viewer.
+   - ⚡ **Volatility Analysis**: Cross-asset rolling volatility comparison and Z-score distributions.
+   - ⚠️ **Anomaly Detection Log**: Real-time flagged statistical events and operational alert log.
+6. **FastAPI & React Trading Console**: Full REST API backend with OAuth2 authentication, Swagger docs (`/docs`), health check probe (`/health`), and Recharts frontend.
 
 ---
 
@@ -63,91 +85,85 @@ flowchart TD
 ```
 Stochastix/
 ├── app/
-│   ├── alerts.py               # Operational risk alert engine & DuckDB alert logger
-│   ├── analytics.py            # Statistical calculation routines
-│   └── dashboard.py            # Streamlit single-page console
+│   ├── alerts.py                 # Risk alerting interface
+│   ├── analytics.py              # Statistical calculation routines
+│   └── dashboard.py              # Streamlit single-page console
 ├── backend/
-│   ├── analytics/              # Analytical wrappers for multi-node setups
-│   ├── database/               # Centralized database connectors
-│   ├── ingestion/              # WebSocket ingestion workers
-│   └── main.py                 # Backend processing node entrypoint
-├── data/                       # Local database storage directory
+│   ├── analytics/                # Multi-node analytical wrappers
+│   ├── database/                 # Centralized database connector
+│   ├── ingestion/                # WebSocket streaming worker
+│   └── main.py                   # Node entrypoint
 ├── frontend/
-│   ├── app.py                  # Streamlit multi-page application home
+│   ├── app.py                    # Streamlit Multi-Page Home (Deployed Entrypoint)
 │   └── pages/
-│       ├── 1_Dashboard.py      # Real-time streaming price flow
-│       ├── 2_Volatility_Analysis.py  # Volatility & Z-score distribution
-│       └── 3_Anomaly_Log.py    # Anomaly alerts and flagged events
+│       ├── 1_Dashboard.py        # Real-time streaming price flow & Bollinger Bands
+│       ├── 2_Volatility_Analysis.py # Volatility & Z-Score distributions
+│       └── 3_Anomaly_Log.py      # Statistical anomalies & operational alerts
 ├── pipeline/
-│   ├── database.py             # DuckDB schema initialization & connection manager
-│   ├── ingest.py               # Coinbase WebSocket trade ingestion client
-│   ├── processor.py            # Vectorized rolling metrics & Z-score processor
-│   └── simulator.py            # Synthetic GBM + Jump-Diffusion market simulator
-├── dashboard.html              # Standalone & FastAPI-served React trading terminal
-├── run.py                      # Master FastAPI server + WebSocket launcher
-├── Dockerfile                  # Containerized deployment blueprint
-├── docker-compose.yml          # Multi-service container orchestrator
-├── render.yaml                 # 1-Click Render cloud deployment blueprint
-├── Procfile                    # Cloud process declaration
-├── requirements.txt            # Python dependencies
-└── README.md                   # System documentation
+│   ├── alerts.py                 # Alert recording and DuckDB queries
+│   ├── database.py               # DuckDB schema initialization & connection manager
+│   ├── ingest.py                 # Coinbase WebSocket live trade ingestion
+│   ├── processor.py              # Quantitative rolling metrics & Z-scores
+│   └── simulator.py              # GBM + Jump-Diffusion market simulator
+├── tests/
+│   └── test_system.py            # Pytest test suite (DB, Simulator, Processor, Alerts)
+├── .github/workflows/
+│   └── ci-cd.yml                 # GitHub Actions automated test & Docker build CI
+├── dashboard.html                # Standalone & FastAPI-served React Trading Console
+├── run.py                        # Master FastAPI server + WebSocket worker launcher
+├── Dockerfile                    # Multi-stage production container
+├── docker-compose.yml            # Multi-service container orchestrator
+├── render.yaml                   # 1-Click Render cloud deployment blueprint
+├── Procfile                      # Cloud process declaration
+├── requirements.txt              # Complete Python dependencies
+└── README.md                     # System documentation
 ```
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Prerequisites & Installation
-
-Clone the repository and install the dependencies:
+### 1. Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/KalagiPandya/stochastix.git
 cd stochastix
 
-# Create a virtual environment (optional but recommended)
+# Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Linux/macOS
 # .venv\Scripts\activate   # On Windows
 
-# Install required packages
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ---
 
-### 2. Running the Application
+### 2. Running Locally
 
-#### Option A: FastAPI + React Trading Terminal (Recommended)
-
-Launch the complete full-stack platform (API + background live streamer + web dashboard):
-
-```bash
-python run.py
-```
-
-- **Interactive Dashboard**: Open [http://localhost:8000/dashboard](http://localhost:8000/dashboard) (or [http://localhost:8000](http://localhost:8000))
-- **Interactive API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Default Credentials**: `admin` / `securepass123`
-
-#### Option B: Offline / Synthetic Simulator Mode
-
-Run without an active internet connection or to demo instant volatility anomalies:
-
-```bash
-python run.py --simulate
-```
-
-#### Option C: Streamlit Multi-Page Analytics Portal
-
-Launch the multi-page exploratory analytics portal:
+#### 🟢 Option A: Streamlit Multi-Page Analytics Portal (Deployed Version)
 
 ```bash
 streamlit run frontend/app.py
 ```
-
 - Open [http://localhost:8501](http://localhost:8501) in your browser.
+
+#### 🔵 Option B: FastAPI + React Trading Terminal
+
+```bash
+python run.py
+```
+- **React Trading Terminal**: [http://localhost:8000/dashboard](http://localhost:8000/dashboard) (or [http://localhost:8000](http://localhost:8000))
+- **Interactive Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Default Login**: `admin` / `securepass123`
+
+#### 🟡 Option C: Offline / Simulation Demo Mode
+
+```bash
+python run.py --simulate
+```
 
 ---
 
@@ -156,67 +172,60 @@ streamlit run frontend/app.py
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
 | `GET` | `/` or `/dashboard` | Serves the React Trading Terminal | No |
-| `GET` | `/health` | Service health and database check | No |
-| `POST` | `/token` | Authenticates user & returns Bearer token | Form Data |
+| `GET` | `/health` | Health check probe | No |
+| `POST` | `/token` | OAuth2 Authentication & JWT/Bearer token issuance | Form Data |
 | `GET` | `/api/market/{symbol}` | Returns rolling metrics, bands, and tick array | Bearer Token |
 | `GET` | `/api/alerts` | Returns recent volatility and anomaly alerts | Bearer Token |
 
-### Sample Response (`GET /api/market/BTC-USD`):
+---
 
-```json
-{
-  "symbol": "BTC-USD",
-  "data": [
-    {
-      "time": "15:02:46",
-      "price": 64492.25,
-      "volume": 0.3565,
-      "sma": 64501.10,
-      "bb_upper": 64580.20,
-      "bb_lower": 64422.00
-    }
-  ],
-  "metrics": {
-    "price": 64492.25,
-    "sma": 64501.10,
-    "ema": 64498.40,
-    "volatility": 39.55,
-    "z_score": -0.22,
-    "bb_upper": 64580.20,
-    "bb_lower": 64422.00,
-    "vwap": 64495.30,
-    "anomaly": false
-  }
-}
+## 🧪 Unit Testing
+
+Run the automated test suite with pytest:
+
+```bash
+python -m pytest tests/ -v
+```
+
+```
+============================= test session starts =============================
+tests/test_system.py::test_database_initialization PASSED                [ 25%]
+tests/test_system.py::test_market_simulator PASSED                       [ 50%]
+tests/test_system.py::test_processor_metrics PASSED                      [ 75%]
+tests/test_system.py::test_alerts_engine PASSED                          [100%]
+
+============================== 4 passed in 1.25s ==============================
 ```
 
 ---
 
-## 🐳 Container & Cloud Deployment
+## ☁️ Cloud Deployment
 
-### Deploy with Docker Compose
+### 1. Streamlit Community Cloud (Live)
+- **Live URL**: [https://kalagipandya-stochastix-frontendapp-9bwmcv.streamlit.app](https://kalagipandya-stochastix-frontendapp-9bwmcv.streamlit.app)
+- **Repository**: `KalagiPandya/stochastix`
+- **Branch**: `main`
+- **Main file**: `frontend/app.py`
+
+### 2. Docker & Docker Compose
 
 ```bash
 docker compose up --build
 ```
-- React Trading Terminal: `http://localhost:8000`
-- Streamlit Analytics Portal: `http://localhost:8501`
+- FastAPI Console: `http://localhost:8000`
+- Streamlit Portal: `http://localhost:8501`
 
-### Deploy to Render
-
-1. Connect your GitHub repository `KalagiPandya/stochastix` to [Render](https://render.com).
-2. Render will automatically detect `render.yaml` and configure the service.
-3. Your live API and Dashboard will be accessible at `https://stochastix-quant-terminal.onrender.com`.
-
-### Deploy to Streamlit Community Cloud
-
-1. Go to [share.streamlit.io](https://share.streamlit.io).
-2. Select your repository `KalagiPandya/stochastix`.
-3. Set **Main file path** to `frontend/app.py`.
-4. Click **Deploy**.
+### 3. Render.com
+- Render automatically detects [`render.yaml`](render.yaml) and deploys both the FastAPI backend and React frontend.
 
 ---
 
-## 📄 License
+<div align="center">
 
-This project is licensed under the MIT License.
+<!--  ╔══════════════════════════════════════════════════════════╗
+      ║              STOCHASTIX  —  HERO FOOTER                 ║
+      ╚══════════════════════════════════════════════════════════╝  -->
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7c3aed,50:9333ea,100:c084fc&height=180&section=footer&text=Built%20with%20%E2%9D%A4%EF%B8%8F%20by%20Stochastix&fontSize=22&fontColor=ffffff&fontAlignY=65&animation=twinkling" width="100%"/>
+
+</div>
