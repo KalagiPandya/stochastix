@@ -59,7 +59,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CLEAN, AIRY, ELEGANT STYLING ---
+# --- CLEAN, RESPONSIVE, PERFECTLY ALIGNED STYLING ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -71,23 +71,23 @@ st.markdown("""
     /* Clean Hero Section */
     .hero-header {
         text-align: center;
-        padding: 3rem 1.5rem 2rem 1.5rem;
-        margin-bottom: 2rem;
+        padding: 2.5rem 1rem 1.5rem 1rem;
+        margin-bottom: 1.5rem;
     }
     .hero-badge {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.35rem 1rem;
+        padding: 0.35rem 0.9rem;
         border-radius: 9999px;
         background: rgba(16, 185, 129, 0.12);
         border: 1px solid rgba(16, 185, 129, 0.35);
         color: #34D399;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-family: 'JetBrains Mono', monospace;
         font-weight: 700;
         letter-spacing: 0.08em;
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
     }
     .pulse-dot {
         width: 8px;
@@ -97,49 +97,63 @@ st.markdown("""
         box-shadow: 0 0 10px #10B981;
     }
     .hero-title {
-        font-size: 3rem;
+        font-size: 2.75rem;
         font-weight: 800;
         background: linear-gradient(135deg, #F8FAFC 0%, #38BDF8 60%, #06B6D4 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         letter-spacing: -0.02em;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
     }
     .hero-desc {
         color: #94A3B8;
-        font-size: 1.15rem;
-        max-width: 720px;
+        font-size: 1.05rem;
+        max-width: 700px;
         margin: 0 auto;
         line-height: 1.6;
     }
 
-    /* Spacious Stat Cards */
+    /* Fixed Height & Non-Wrapping Metric Cards */
     .metric-container {
         background: #0F172A;
         border: 1px solid #1E293B;
         border-radius: 16px;
-        padding: 1.75rem;
+        padding: 1.25rem 1rem;
         text-align: center;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
         transition: all 0.25s ease;
     }
     .metric-container:hover {
         border-color: #38BDF8;
-        transform: translateY(-3px);
+        transform: translateY(-2px);
         box-shadow: 0 12px 30px -10px rgba(56, 189, 248, 0.15);
     }
     .metric-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: #64748B;
         font-family: 'JetBrains Mono', monospace;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.35rem;
+        white-space: nowrap;
     }
     .metric-val {
-        font-size: 2.25rem;
+        font-size: clamp(1.3rem, 1.8vw, 1.85rem);
         font-weight: 800;
         font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+    .metric-sub {
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
+        margin-top: 0.4rem;
+        white-space: nowrap;
     }
 
     /* Clean Module Cards */
@@ -147,7 +161,7 @@ st.markdown("""
         background: #0B1120;
         border: 1px solid #1E293B;
         border-radius: 16px;
-        padding: 2rem;
+        padding: 1.75rem 1.5rem;
         height: 100%;
         transition: all 0.25s ease;
     }
@@ -157,18 +171,18 @@ st.markdown("""
         transform: translateY(-2px);
     }
     .module-icon {
-        font-size: 2rem;
-        margin-bottom: 1rem;
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
     }
     .module-title {
-        font-size: 1.25rem;
+        font-size: 1.15rem;
         font-weight: 700;
         color: #F8FAFC;
         margin-bottom: 0.5rem;
     }
     .module-desc {
         color: #94A3B8;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         line-height: 1.6;
     }
 </style>
@@ -222,9 +236,7 @@ with c1:
     <div class="metric-container">
         <div class="metric-label">⚡ Bitcoin (BTC-USD)</div>
         <div class="metric-val" style="color: #38BDF8;">${btc_price:,.2f}</div>
-        <div style="font-size: 0.8rem; color: #34D399; font-family: 'JetBrains Mono'; margin-top: 0.5rem;">
-            🟢 Stream Synced
-        </div>
+        <div class="metric-sub" style="color: #34D399;">🟢 Stream Synced</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -233,9 +245,7 @@ with c2:
     <div class="metric-container">
         <div class="metric-label">🔷 Ethereum (ETH-USD)</div>
         <div class="metric-val" style="color: #A855F7;">${eth_price:,.2f}</div>
-        <div style="font-size: 0.8rem; color: #34D399; font-family: 'JetBrains Mono'; margin-top: 0.5rem;">
-            🟢 Stream Synced
-        </div>
+        <div class="metric-sub" style="color: #34D399;">🟢 Stream Synced</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -244,16 +254,14 @@ with c3:
     <div class="metric-container">
         <div class="metric-label">📊 Processed Ticks (DuckDB)</div>
         <div class="metric-val" style="color: #10B981;">{total_ticks:,}</div>
-        <div style="font-size: 0.8rem; color: #64748B; font-family: 'JetBrains Mono'; margin-top: 0.5rem;">
-            Columnar Storage Active
-        </div>
+        <div class="metric-sub" style="color: #64748B;">Columnar Storage Active</div>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 2.5rem;'></div>", unsafe_allow_html=True)
 
 # --- NAVIGATION MODULES ---
-st.markdown("<h3 style='text-align: center; color: #F8FAFC; font-weight: 700; margin-bottom: 1.5rem;'>Explore Analytics Modules</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #F8FAFC; font-weight: 700; margin-bottom: 1.25rem;'>Explore Analytics Modules</h3>", unsafe_allow_html=True)
 
 m1, m2, m3 = st.columns(3)
 
@@ -293,6 +301,6 @@ with m3:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='height: 2.5rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
 st.info("👈 **Select any module from the left sidebar** to view full real-time interactive charts.")
